@@ -1,0 +1,14 @@
+.upload-container {
+	align-items: center;
+	background-color: #32a88f;
+	padding: 1rem;
+	border: 3rem;
+	border-color: black;
+}
+
+.add-button {
+	display: block;
+	width: 4em;
+	margin-left: auto;
+	margin-right: auto;
+}
