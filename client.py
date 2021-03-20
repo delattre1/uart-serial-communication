@@ -24,12 +24,21 @@ class Client:
         self.com1.sendData(self.package)
 
     def build_packages(self):
-        for i in range(len(self.l_bytes_img)):
-            payload = self.l_bytes_img[i]
-            header = [1 for i in range(10)]
+        for index_package in range(len(self.l_bytes_img)):
+            payload = self.l_bytes_img[index_package]
+            header_list = [1 for i in range(10)]
 
-            datagram = Datagram(payload, header)
+            header_list[0] = 3  # mensagem to tipo 1 - handshake
+            header_list[1] = CLIENT_ID
+            header_list[2] = SERVER_ID
+            header_list[3] = len(self.l_bytes_img)
+            header_list[4] = index_package + 1
+            header_list[5] = len(payload)
+
+            datagram = Datagram(payload, header_list)
             self.l_packages.append(datagram.get_datagram())
+
+        self.len_packages = len(self.l_packages)
 
     def send_package(self):
         self.com1.sendData(self.package)
@@ -87,13 +96,54 @@ class Client:
         if self.package_header[0] == 2:
             print(f'Server está ocioso... começando o envio\n')
 
+    def send_full_packages(self):
+        for index_package in range(self.len_packages):
+            self.package = self.l_packages[index_package]
+            self.send_package()
+            self.timer1 = time.time()
+            self.timer2 = self.timer1
+            print(f'Enviando o pacote [{index_package}]...')
+            self.verify_server_receivement()
+
+    def verify_server_receivement(self):
+        msg_type = ''
+        while msg_type != 4:
+
+            # loops until notice something in the buffer, then verify
+            while self.com1.rx.getBufferLen() == 0:
+                current_time = time.time()
+                elapsed_timer1 = current_time - self.timer1
+                elapsed_timer2 = current_time - self.timer2
+
+                if elapsed_timer1 >= 20:
+                    print(f'Tempo máximo excedido, avisando server...')
+                    print(f'criar pacote T6 para enviar')
+                    os._exit(os.EX_OK)
+
+                if elapsed_timer2 >= 5:
+                    print(f'5 segundos sem resposta, enviando novamente...')
+                    self.send_package()
+                    self.timer2 = time.time()
+
+            self.get_header()
+            self.get_payload_eop()
+            msg_type = self.package_header[0]
+            print(f'Tipo msg: {msg_type}')
+
+            if msg_type == 4:
+                print(f'Server recebeu corretamente o pacote. Enviando o próximo')
+
+            elif msg_type == 6:
+                print(f'Server nao recebeu corretamente. Reenviando...')
+                self.send_package()
+                self.timer2 = time.time()
+
     def main(self):
         self.build_packages()
 
         self.client_handshake()
-        # for pak in self.l_packages:
-        #    print(f'lista com os pacotes: {pak}\n\n')
 
+        self.send_full_packages()
         time.sleep(0.5)
         self.com1.disable()
 

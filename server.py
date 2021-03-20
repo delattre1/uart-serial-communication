@@ -2,7 +2,6 @@ from enlace import *
 import os
 import time
 import numpy as np
-from utils import datagram_builder, receivement_handler
 from datagram import Datagram
 serialName = "/dev/ttyVirtualS0"
 
@@ -15,6 +14,7 @@ class Server:
     def __init__(self,):
         self.com2 = enlace(serialName)
         self.com2.enable()
+        self.l_received_payloads = []
 
     def send_package(self):
         self.com2.sendData(self.package)
@@ -28,7 +28,7 @@ class Server:
 
         msg_type = self.package_header[0]
         self.n_of_packages = self.package_header[3]
-        self.n_of_current_package = self.package_header[4]
+        self.n_current_package = self.package_header[4]
 
         if msg_type == 3:
             payload_size = self.package_header[5]
@@ -41,7 +41,7 @@ class Server:
     def server_handshake(self):
         self.get_header()
         self.get_payload_eop()
-
+        self.quantity_packages_to_receive = self.package_header[3]
         print(f'header recebido: {self.r_header}')
 
         if self.package_header[2] == SERVER_ID:
@@ -65,9 +65,59 @@ class Server:
         else:
             print(f'ID do servidor não confere, ignorando mensagem...')
 
+    def build_response(self):
+        is_package_ok = self.is_next_package and self.is_eop_right
+        payload = []
+        header_list = [0 for i in range(10)]
+
+        if is_package_ok:  # create type4  msg representing that the package was received successfully
+            print(f'package [{self.n_current_package}] received correctly')
+            self.n_last_package_received = self.n_current_package
+            header_list[0] = 4  # mensagem to tipo 1 - handshake
+            header_list[1] = CLIENT_ID
+            header_list[2] = SERVER_ID
+            header_list[7] = self.n_last_package_received
+        else:
+            print(
+                f'package [{self.n_current_package}] had some error, requesting again..')
+            header_list[0] = 6  # mensagem to tipo 1 - handshake
+            header_list[1] = CLIENT_ID
+            header_list[2] = SERVER_ID
+            header_list[6] = self.n_last_package_received + 1
+
+        datagram_obj = Datagram(payload, header_list)
+        self.package = datagram_obj.get_datagram()
+
+    def receive_full_packages(self):
+
+        self.n_last_package_received = 0
+
+        while self.n_current_package < self.quantity_packages_to_receive:
+            self.get_header()
+            self.get_payload_eop()
+            # verify eop and current == last + 1
+
+            # verificar se o pacote atual é igual ao anterior +1
+            self.is_next_package = self.n_last_package_received + 1 == self.n_current_package
+            self.is_eop_right = self.r_eop == b'\xff\xaa\xff\xaa'
+
+            print(f'Recebeu o proximo? [{self.is_next_package}]', end=' | ')
+            print(f'Is eop ok?  [{self.is_eop_right}]', end=" | ")
+            print(
+                f'Received package [{self.n_current_package} / {self.quantity_packages_to_receive}]')
+
+            self.build_response()
+            self.send_package()
+
+            if (self.quantity_packages_to_receive) == self.n_current_package:
+                received_entire_img = True
+                print(f'Received all packages')
+
     def main(self):
         print(f'Servidor inicializado')
         self.server_handshake()
+        time.sleep(0.1)
+        self.receive_full_packages()
 
         time.sleep(1)
         self.com2.disable()
