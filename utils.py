@@ -1,11 +1,25 @@
 import numpy as np
 
-HEAD = [bytes([0]) for i in range(10)]
-PAYLOAD = [bytes([0]) for i in range(0)]
-EOP = [bytes([255]) for i in range(4)]
 
+ZERO = bytes([0])
+FF = bytes([255])
+AA = bytes([170])
+
+HEAD = [ZERO for i in range(10)]
+PAYLOAD = [bytes([0]) for i in range(0)]
+EOP = [FF, AA, FF, AA]
 # Quando o cliente enviar um pacote, deve informar obrigatoriamente (em algum espaço do head reservado a isso), o
 # número do pacote e o número total de pacotes que serão transmitidos.
+
+
+class Datagram:
+    def __init__(self, payload=PAYLOAD, msg_type=ZERO, sensor_id=ZERO, server_id=ZERO, n_total_packages=ZERO, n_current_package=ZERO, id_or_payload_size=ZERO, n_package_required_on_error=ZERO, n_last_success_package=ZERO, CRC1=ZERO, CRC2=ZERO):
+        self.head = HEAD
+        self.payload = payload
+        self.eop = EOP
+
+    def get_datagram(self):
+        return self.head + self.payload + self.eop
 
 
 def datagram_builder(head=HEAD, payload=PAYLOAD, eop=EOP, current_package=1, total_of_packages=0, server_available=False, acknowledge=False, finished=False, fake_size=False):
