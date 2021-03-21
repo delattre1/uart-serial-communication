@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 def separate_packages(img_array):
     len_img = len(img_array)
     tamanho_pacote = 114
@@ -20,3 +23,10 @@ def open_image(path):
         f = image.read()
         img_array = bytearray(f)
     return img_array
+
+
+def get_current_time():
+    # dd/mm/YY H:M:S
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S.%f")[:-3]
+    return dt_string

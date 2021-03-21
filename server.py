@@ -34,6 +34,11 @@ class Server:
             payload_size = self.package_header[5]
             package_size += payload_size
 
+        if msg_type == 5:
+            print(f'Recebido sinal de desligamento da outra parte...')
+            print(f'Encerrando o processo')
+            os._exit(os.EX_OK)
+
         self.r_package, self.len_r_package = self.com2.getData(package_size)
         self.r_payload = self.r_package[:-4]
         self.r_eop = self.r_package[-4:]
@@ -71,6 +76,7 @@ class Server:
         header_list = [0 for i in range(10)]
 
         if is_package_ok:  # create type4  msg representing that the package was received successfully
+            self.l_received_payloads.append(self.r_payload)
             print(f'package [{self.n_current_package}] received correctly')
             self.n_last_package_received = self.n_current_package
             header_list[0] = 4  # mensagem to tipo 1 - handshake
@@ -80,7 +86,7 @@ class Server:
         else:
             print(
                 f'package [{self.n_current_package}] had some error, requesting again..')
-            header_list[0] = 6  # mensagem to tipo 1 - handshake
+            header_list[0] = 6  # mensagem to tipo 6 - solicitando reenvio
             header_list[1] = CLIENT_ID
             header_list[2] = SERVER_ID
             header_list[6] = self.n_last_package_received + 1
@@ -93,6 +99,32 @@ class Server:
         self.n_last_package_received = 0
 
         while self.n_current_package < self.quantity_packages_to_receive:
+            while self.com1.rx.getBufferLen() == 0:
+                self.timer1 = time.time()
+                self.timer2 = self.timer1
+
+                if elapsed_timer1 >= 20:
+                    print(f'Tempo máximo excedido, avisando client desligamento...')
+                    payload = []
+
+                    header_list = [1 for i in range(10)]
+                    header_list[0] = 5  # mensagem to tipo 1 - handshake
+                    header_list[1] = CLIENT_ID
+                    header_list[2] = SERVER_ID
+
+                    datagram_obj = Datagram(payload, header_list)
+                    self.package = datagram_obj.get_datagram()
+                    self.send_package()
+
+                    time.sleep(1)
+                    os._exit(os.EX_OK)
+
+                if elapsed_timer2 >= 3:
+                    print(
+                        f'3 segundos sem receber o proximo pacote, enviando resposta novamente...')
+                    self.send_package()
+                    self.timer2 = time.time()
+
             self.get_header()
             self.get_payload_eop()
             # verify eop and current == last + 1
@@ -109,9 +141,16 @@ class Server:
             self.build_response()
             self.send_package()
 
-            if (self.quantity_packages_to_receive) == self.n_current_package:
-                received_entire_img = True
-                print(f'Received all packages')
+        print(f'Received all packages')
+        self.juntar_imagem()
+
+    def juntar_imagem(self):
+        received_img = b''.join(self.l_received_payloads)
+
+        with open('imagem-recebida.png', 'wb') as file:
+            file.write(received_img)
+
+        print(f'Imagem salva...\n')
 
     def main(self):
         print(f'Servidor inicializado')

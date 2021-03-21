@@ -2,7 +2,7 @@ from enlace import *
 import os
 import time
 import numpy as np
-from utils import open_image, separate_packages
+from utils import open_image, separate_packages, get_current_time
 from datagram import Datagram
 
 serialName = "/dev/ttyVirtualS1"
@@ -53,6 +53,11 @@ class Client:
 
         msg_type = self.package_header[0]
 
+        if msg_type == 5:
+            print(f'Recebido sinal de desligamento da outra parte...')
+            print(f'Encerrando o processo')
+            os._exit(os.EX_OK)
+
         self.n_of_packages = self.package_header[3]
         self.n_of_current_package = self.package_header[4]
 
@@ -102,7 +107,7 @@ class Client:
             self.send_package()
             self.timer1 = time.time()
             self.timer2 = self.timer1
-            print(f'Enviando o pacote [{index_package}]...')
+            print(f'Enviando o pacote [{index_package + 1}]...')
             self.verify_server_receivement()
 
     def verify_server_receivement(self):
@@ -116,8 +121,20 @@ class Client:
                 elapsed_timer2 = current_time - self.timer2
 
                 if elapsed_timer1 >= 20:
-                    print(f'Tempo máximo excedido, avisando server...')
-                    print(f'criar pacote T6 para enviar')
+                    print(f'Tempo máximo excedido, avisando server desligamento...')
+                    payload = []
+
+                    header_list = [1 for i in range(10)]
+                    header_list[0] = 5  # mensagem to tipo 1 - handshake
+                    header_list[1] = CLIENT_ID
+                    header_list[2] = SERVER_ID
+
+                    datagram_obj = Datagram(payload, header_list)
+                    self.package = datagram_obj.get_datagram()
+                    self.send_package()
+
+                    time.sleep(1)
+
                     os._exit(os.EX_OK)
 
                 if elapsed_timer2 >= 5:
