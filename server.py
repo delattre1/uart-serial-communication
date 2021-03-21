@@ -99,9 +99,13 @@ class Server:
         self.n_last_package_received = 0
 
         while self.n_current_package < self.quantity_packages_to_receive:
-            while self.com1.rx.getBufferLen() == 0:
-                self.timer1 = time.time()
-                self.timer2 = self.timer1
+            self.timer1 = time.time()
+            self.timer2 = self.timer1
+
+            while self.com2.rx.getBufferLen() == 0:
+                current_time = time.time()
+                elapsed_timer1 = current_time - self.timer1
+                elapsed_timer2 = current_time - self.timer2
 
                 if elapsed_timer1 >= 20:
                     print(f'Tempo máximo excedido, avisando client desligamento...')

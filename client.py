@@ -22,26 +22,31 @@ class Client:
 
     def send_package(self):
         self.com1.sendData(self.package)
+        msg_type = self.header_list[0]
+        current_time = get_current_time()
+        self.str_log = f'{current_time} | envio |{msg_type} | tamanho_arrumar | pacote_enviado | total_pacote | CRC \n'
+        self.write_logs()
+
+    def write_logs(self):
+        with open('log1_client.txt', 'a') as fd:
+            fd.write(self.str_log)
 
     def build_packages(self):
         for index_package in range(len(self.l_bytes_img)):
             payload = self.l_bytes_img[index_package]
-            header_list = [1 for i in range(10)]
+            self.header_list = [1 for i in range(10)]
 
-            header_list[0] = 3  # mensagem to tipo 1 - handshake
-            header_list[1] = CLIENT_ID
-            header_list[2] = SERVER_ID
-            header_list[3] = len(self.l_bytes_img)
-            header_list[4] = index_package + 1
-            header_list[5] = len(payload)
+            self.header_list[0] = 3  # mensagem to tipo 1 - handshake
+            self.header_list[1] = CLIENT_ID
+            self.header_list[2] = SERVER_ID
+            self.header_list[3] = len(self.l_bytes_img)
+            self.header_list[4] = index_package + 1
+            self.header_list[5] = len(payload)
 
-            datagram = Datagram(payload, header_list)
+            datagram = Datagram(payload, self.header_list)
             self.l_packages.append(datagram.get_datagram())
 
         self.len_packages = len(self.l_packages)
-
-    def send_package(self):
-        self.com1.sendData(self.package)
 
     def get_header(self):
         self.r_header, self.len_r_header = self.com1.getData(10)
@@ -67,15 +72,15 @@ class Client:
 
     def client_handshake(self):
         payload = []
-        header_list = [0 for i in range(10)]
+        self.header_list = [0 for i in range(10)]
 
-        header_list[0] = 1  # mensagem to tipo 1 - handshake
-        header_list[1] = CLIENT_ID
-        header_list[2] = SERVER_ID
-        header_list[3] = len(self.l_packages)
-        header_list[5] = FILE_ID
+        self.header_list[0] = 1  # mensagem to tipo 1 - handshake
+        self.header_list[1] = CLIENT_ID
+        self.header_list[2] = SERVER_ID
+        self.header_list[3] = len(self.l_packages)
+        self.header_list[5] = FILE_ID
 
-        datagram_obj = Datagram(payload, header_list)
+        datagram_obj = Datagram(payload, self.header_list)
         datagram = datagram_obj.get_datagram()
 
         self.package = datagram
@@ -124,12 +129,12 @@ class Client:
                     print(f'Tempo máximo excedido, avisando server desligamento...')
                     payload = []
 
-                    header_list = [1 for i in range(10)]
-                    header_list[0] = 5  # mensagem to tipo 1 - handshake
-                    header_list[1] = CLIENT_ID
-                    header_list[2] = SERVER_ID
+                    self.header_list = [1 for i in range(10)]
+                    self.header_list[0] = 5  # mensagem to tipo 1 - handshake
+                    self.header_list[1] = CLIENT_ID
+                    self.header_list[2] = SERVER_ID
 
-                    datagram_obj = Datagram(payload, header_list)
+                    datagram_obj = Datagram(payload, self.header_list)
                     self.package = datagram_obj.get_datagram()
                     self.send_package()
 
