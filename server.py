@@ -38,7 +38,7 @@ class Server:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_server2.txt', 'a') as fd:
+        with open('logs/log_server3.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def get_header(self):
@@ -93,8 +93,8 @@ class Server:
 
                     datagram_obj = Datagram(payload, header_list)
                     self.package = datagram_obj.get_datagram()
-                    self.send_package()
-                    is_handshake_successful = True
+                    # self.send_package()
+                    #is_handshake_successful = True
                     print(f'enviado resposta para o client')
 
             else:

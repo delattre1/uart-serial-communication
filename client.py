@@ -40,7 +40,7 @@ class Client:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_client2.txt', 'a') as fd:
+        with open('logs/log_client3.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def build_packages(self):
@@ -141,19 +141,10 @@ class Client:
     def send_full_packages(self):
         for index_package in range(self.len_packages):
             self.package = self.l_packages[index_package]
-            # self.send_package()
-            #self.timer1 = time.time()
-            #self.timer2 = self.timer1
-            #print(f'Enviando o pacote [{index_package + 1}]...')
-
-            if index_package == 10:  # to simulate an error
-                self.simulate_error(index_package)
-            else:
-                self.send_package()
-                self.timer1 = time.time()
-                self.timer2 = self.timer1
-                print(f'Enviando o pacote [{index_package + 1}]...')
-
+            self.send_package()
+            self.timer1 = time.time()
+            self.timer2 = self.timer1
+            print(f'Enviando o pacote [{index_package + 1}]...')
             self.verify_server_receivement()
 
     def simulate_error(self, index_package):
