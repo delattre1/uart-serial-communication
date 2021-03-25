@@ -19,16 +19,28 @@ class Client:
         self.img_array = open_image(path)
         self.l_bytes_img = separate_packages(self.img_array)
         self.l_packages = []
+        self.str_log = ''
 
     def send_package(self):
-        self.com1.sendData(self.package)
-        msg_type = self.header_list[0]
-        current_time = get_current_time()
-        self.str_log = f'{current_time} | envio |{msg_type} | tamanho_arrumar | pacote_enviado | total_pacote | CRC \n'
-        self.write_logs()
+        pkg = np.asarray(self.package)
+        self.com1.sendData(pkg)
+
+        send_or_receive = 'send'
+        head_pkg_bin = list(self.package)[:10]
+        head_pkg = [int.from_bytes(byte, 'big') for byte in head_pkg_bin]
+
+        msg_type = head_pkg[0]
+        total_pkgs = head_pkg[3]
+        current_pkg = head_pkg[4]
+
+        if msg_type == 3:
+            str_event = f'{get_current_time()} | {send_or_receive}    | {msg_type} | {len(pkg)} | [{current_pkg}/{total_pkgs}] | CRC \n'
+        else:
+            str_event = f'{get_current_time()} | {send_or_receive}    | {msg_type} |\n'
+        self.str_log += str_event
 
     def write_logs(self):
-        with open('log1_client.txt', 'a') as fd:
+        with open('logs/log_client4.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def build_packages(self):
@@ -61,7 +73,7 @@ class Client:
         if msg_type == 5:
             print(f'Recebido sinal de desligamento da outra parte...')
             print(f'Encerrando o processo')
-            os._exit(os.EX_OK)
+            self.shutdown()
 
         self.n_of_packages = self.package_header[3]
         self.n_of_current_package = self.package_header[4]
@@ -70,7 +82,14 @@ class Client:
         self.r_payload = self.r_package[:-4]
         self.r_eop = self.r_package[-4:]
 
+        # appending to log
+        send_or_receive = 'receive'
+        total_size_pkg = package_size + 10
+        str_event = f'{get_current_time()} | {send_or_receive} | {msg_type} | {total_size_pkg}\n'
+        self.str_log += str_event
+
     def client_handshake(self):
+        handshake_successful = False
         payload = []
         self.header_list = [0 for i in range(10)]
 
@@ -88,23 +107,36 @@ class Client:
         print(f'Enviando handshake para o Servidor..')
         self.send_package()
 
-        self.start_time = time.time()
-        while self.com1.rx.getBufferLen() == 0:
-            self.time_delta = time.time() - self.start_time
-            if self.time_delta >= 5:
-                should_send_again = input(
-                    'Didn\'t receive response. Send again? (s/n) ')
-                if should_send_again == 's':
-                    print(f'Enviando novamente...\n')
+        self.start_time1 = time.time()
+        self.start_time2 = time.time()
+        while not handshake_successful:
+            while self.com1.rx.getBufferLen() == 0:
+                self.time_delta1 = time.time() - self.start_time1
+                self.time_delta2 = time.time() - self.start_time2
+                if self.time_delta2 > 20:
+                    print(f'Tempo máximo excedido, avisando server desligamento...')
+                    self.create_shut_down_signal()
                     self.send_package()
-                    self.start_time = time.time()
-                else:
-                    os._exit(os.EX_OK)
+                    time.sleep(1)
+                    self.shutdown()
 
-        self.get_header()
-        self.get_payload_eop()
-        if self.package_header[0] == 2:
-            print(f'Server está ocioso... começando o envio\n')
+                elif self.time_delta1 >= 5:
+                    should_send_again = input(
+                        'Didn\'t receive response. Send again? (s/n) ')
+                    if should_send_again == 's':
+                        print(f'Enviando novamente...\n')
+                        self.send_package()
+                        self.start_time1 = time.time()
+                    else:
+                        self.shutdown()
+
+            self.get_header()
+            self.get_payload_eop()
+            if self.package_header[0] == 2:
+                handshake_successful = True
+                print(f'Server está ocioso... começando o envio\n')
+            else:
+                print(f'Não teve sucesso no handshake...')
 
     def send_full_packages(self):
         for index_package in range(self.len_packages):
@@ -114,6 +146,16 @@ class Client:
             self.timer2 = self.timer1
             print(f'Enviando o pacote [{index_package + 1}]...')
             self.verify_server_receivement()
+
+    def create_shut_down_signal(self):
+        payload = []
+        self.header_list = [1 for i in range(10)]
+        self.header_list[0] = 5  # mensagem to tipo 1 - handshake
+        self.header_list[1] = CLIENT_ID
+        self.header_list[2] = SERVER_ID
+
+        datagram_obj = Datagram(payload, self.header_list)
+        self.package = datagram_obj.get_datagram()
 
     def verify_server_receivement(self):
         msg_type = ''
@@ -127,21 +169,10 @@ class Client:
 
                 if elapsed_timer1 >= 20:
                     print(f'Tempo máximo excedido, avisando server desligamento...')
-                    payload = []
-
-                    self.header_list = [1 for i in range(10)]
-                    self.header_list[0] = 5  # mensagem to tipo 1 - handshake
-                    self.header_list[1] = CLIENT_ID
-                    self.header_list[2] = SERVER_ID
-
-                    datagram_obj = Datagram(payload, self.header_list)
-                    self.package = datagram_obj.get_datagram()
+                    self.create_shut_down_signal()
                     self.send_package()
-
                     time.sleep(1)
-
-                    os._exit(os.EX_OK)
-
+                    self.shutdown()
                 if elapsed_timer2 >= 5:
                     print(f'5 segundos sem resposta, enviando novamente...')
                     self.send_package()
@@ -165,12 +196,24 @@ class Client:
 
         self.client_handshake()
 
+        start_execution_time = time.time()
+
         self.send_full_packages()
         time.sleep(0.5)
+
+        execution_time = time.time() - start_execution_time
+        print(f'Tempo total de execução: {execution_time: .2f}')
+        #print(f'Velocidade: {len(COLOCAR_TOTAL_BYTES)/execution_time:.2f} B/s')
+        self.shutdown()
+
+    def shutdown(self):
+        time.sleep(0.2)
         self.com1.disable()
+        self.write_logs()
+        os._exit(os.EX_OK)
+        print(f'Conexão encerrada')
 
 
 if __name__ == '__main__':
     client = Client('imgs/advice.png')
     client.main()
-    os._exit(os.EX_OK)
