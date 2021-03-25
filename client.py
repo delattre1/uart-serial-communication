@@ -207,7 +207,7 @@ class Client:
         self.shutdown()
 
     def shutdown(self):
-        time.sleep(0.2)
+        time.sleep(1)
         self.com1.disable()
         self.write_logs()
         os._exit(os.EX_OK)

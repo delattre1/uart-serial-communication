@@ -47,10 +47,15 @@ class Server:
     def get_payload_eop(self):
         self.package_header = list(self.r_header)
         package_size = 4
-
         msg_type = self.package_header[0]
         self.n_of_packages = self.package_header[3]
         self.n_current_package = self.package_header[4]
+
+        # appending to log
+        send_or_receive = 'receive'
+        total_size_pkg = package_size + 10
+        str_event = f'{get_current_time()} | {send_or_receive} | {msg_type} | {total_size_pkg}\n'
+        self.str_log += str_event
 
         if msg_type == 3:
             payload_size = self.package_header[5]
@@ -64,12 +69,6 @@ class Server:
         self.r_package, self.len_r_package = self.com2.getData(package_size)
         self.r_payload = self.r_package[:-4]
         self.r_eop = self.r_package[-4:]
-
-        # appending to log
-        send_or_receive = 'receive'
-        total_size_pkg = package_size + 10
-        str_event = f'{get_current_time()} | {send_or_receive} | {msg_type} | {total_size_pkg}\n'
-        self.str_log += str_event
 
     def server_handshake(self):
         is_handshake_successful = False
