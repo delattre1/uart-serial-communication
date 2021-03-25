@@ -38,7 +38,7 @@ class Server:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_server1.txt', 'a') as fd:
+        with open('logs/log_server2.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def get_header(self):
