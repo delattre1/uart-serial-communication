@@ -40,7 +40,7 @@ class Client:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_client3.txt', 'a') as fd:
+        with open('logs/log_client4.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def build_packages(self):
