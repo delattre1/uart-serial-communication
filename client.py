@@ -40,7 +40,7 @@ class Client:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_client2.txt', 'a') as fd:
+        with open('logs/log_client1.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def build_packages(self):
@@ -141,20 +141,27 @@ class Client:
     def send_full_packages(self):
         for index_package in range(self.len_packages):
             self.package = self.l_packages[index_package]
+            self.send_package()
+            self.timer1 = time.time()
+            self.timer2 = self.timer1
+            print(f'Enviando o pacote [{index_package + 1}]...')
 
-            if index_package == 10:  # to simulate an error
-                pkg_correto = self.package
-                self.package = self.l_packages[index_package+2]
-                self.send_package()
-                self.package = pkg_correto
-                print(f'Enviei o pacote errado para simular erro')
-            else:
-                self.send_package()
-                self.timer1 = time.time()
-                self.timer2 = self.timer1
-                print(f'Enviando o pacote [{index_package + 1}]...')
+            # if index_package == 10:  # to simulate an error
+            #    self.simulate_error()
+            # else:
+            #    self.send_package()
+            #    self.timer1 = time.time()
+            #    self.timer2 = self.timer1
+            #    print(f'Enviando o pacote [{index_package + 1}]...')
 
             self.verify_server_receivement()
+
+    def simulate_error(self):
+        pkg_correto = self.package
+        self.package = self.l_packages[index_package+2]
+        self.send_package()
+        self.package = pkg_correto
+        print(f'Enviei o pacote errado para simular erro')
 
     def create_shut_down_signal(self):
         payload = []
@@ -199,14 +206,6 @@ class Client:
                 print(f'Server nao recebeu corretamente. Reenviando...')
                 self.send_package()
                 self.timer2 = time.time()
-
-    def simulate_error_number_package(self):
-        pacote_certo = self.package
-        pacote_errado = datagram_builder(current_package=22)
-        self.package = pacote_errado
-        self.send_package()
-        print(f'enviei o pacote com numeracao errada para testar\n')
-        self.package = pacote_certo
 
     def main(self):
         self.build_packages()

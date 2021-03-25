@@ -38,7 +38,7 @@ class Server:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_server2.txt', 'a') as fd:
+        with open('logs/log_server1.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def get_header(self):
@@ -57,11 +57,11 @@ class Server:
         if msg_type == 3:
             str_event = f'{get_current_time()} | {send_or_receive} | {msg_type} | {total_size_pkg} | [{self.n_current_package}/{self.n_of_packages}]\n'
         else:
-            str_event = f'{get_current_time()} | {send_or_receive} | {msg_type} | {total_size_pkg} |\n')
+            str_event = f'{get_current_time()} | {send_or_receive} | {msg_type} | {total_size_pkg} |\n'
         self.str_log += str_event
 
         if msg_type == 3:
-            payload_size=self.package_header[5]
+            payload_size = self.package_header[5]
             package_size += payload_size
 
         if msg_type == 5:
@@ -69,85 +69,85 @@ class Server:
             print(f'Encerrando o processo')
             self.shutdown()
 
-        self.r_package, self.len_r_package=self.com2.getData(package_size)
-        self.r_payload=self.r_package[:-4]
-        self.r_eop=self.r_package[-4:]
+        self.r_package, self.len_r_package = self.com2.getData(package_size)
+        self.r_payload = self.r_package[:-4]
+        self.r_eop = self.r_package[-4:]
 
     def server_handshake(self):
-        is_handshake_successful=False
+        is_handshake_successful = False
         while not is_handshake_successful:
             self.get_header()
             self.get_payload_eop()
-            self.quantity_packages_to_receive=self.package_header[3]
+            self.quantity_packages_to_receive = self.package_header[3]
             print(f'header recebido: {self.r_header}')
 
             if self.package_header[2] == SERVER_ID:
                 print(f'Recebido HS do client - ID correto\n')
                 if self.package_header[0] == 1:
 
-                    payload=[]
-                    header_list=[0 for i in range(10)]
-                    header_list[0]=2  # mensagem to tipo 2 - server ocioso
-                    header_list[1]=CLIENT_ID
-                    header_list[2]=SERVER_ID
+                    payload = []
+                    header_list = [0 for i in range(10)]
+                    header_list[0] = 2  # mensagem to tipo 2 - server ocioso
+                    header_list[1] = CLIENT_ID
+                    header_list[2] = SERVER_ID
 
-                    datagram_obj=Datagram(payload, header_list)
-                    self.package=datagram_obj.get_datagram()
+                    datagram_obj = Datagram(payload, header_list)
+                    self.package = datagram_obj.get_datagram()
                     self.send_package()
-                    is_handshake_successful=True
+                    is_handshake_successful = True
                     print(f'enviado resposta para o client')
 
             else:
                 print(f'ID do servidor não confere, ignorando mensagem...')
 
     def build_response(self):
-        is_package_ok=self.is_next_package and self.is_eop_right
-        payload=[]
-        header_list=[0 for i in range(10)]
+        is_package_ok = self.is_next_package and self.is_eop_right
+        payload = []
+        header_list = [0 for i in range(10)]
 
         if is_package_ok:  # create type4  msg representing that the package was received successfully
             self.l_received_payloads.append(self.r_payload)
             print(f'package [{self.n_current_package}] received correctly')
-            self.n_last_package_received=self.n_current_package
-            header_list[0]=4  # mensagem to tipo 1 - handshake
-            header_list[1]=CLIENT_ID
-            header_list[2]=SERVER_ID
-            header_list[7]=self.n_last_package_received
+            self.n_last_package_received = self.n_current_package
+            header_list[0] = 4  # mensagem to tipo 1 - handshake
+            header_list[1] = CLIENT_ID
+            header_list[2] = SERVER_ID
+            header_list[7] = self.n_last_package_received
         else:
             print(
                 f'package [{self.n_current_package}] had some error, requesting again..')
-            header_list[0]=6  # mensagem to tipo 6 - solicitando reenvio
-            header_list[1]=CLIENT_ID
-            header_list[2]=SERVER_ID
-            header_list[6]=self.n_last_package_received + 1
+            header_list[0] = 6  # mensagem to tipo 6 - solicitando reenvio
+            header_list[1] = CLIENT_ID
+            header_list[2] = SERVER_ID
+            header_list[6] = self.n_last_package_received + 1
 
-        datagram_obj=Datagram(payload, header_list)
-        self.package=datagram_obj.get_datagram()
+        datagram_obj = Datagram(payload, header_list)
+        self.package = datagram_obj.get_datagram()
 
     def receive_full_packages(self):
 
-        self.n_last_package_received=0
+        self.n_last_package_received = 0
 
         while self.n_current_package < self.quantity_packages_to_receive:
-            self.timer1=time.time()
-            self.timer2=self.timer1
+            self.timer1 = time.time()
+            self.timer2 = self.timer1
 
             while self.com2.rx.getBufferLen() == 0:
-                current_time=time.time()
-                elapsed_timer1=current_time - self.timer1
-                elapsed_timer2=current_time - self.timer2
+                current_time = time.time()
+                elapsed_timer1 = current_time - self.timer1
+                elapsed_timer2 = current_time - self.timer2
 
                 if elapsed_timer1 >= 20:
                     print(f'Tempo máximo excedido, avisando client desligamento...')
-                    payload=[]
+                    payload = []
 
-                    header_list=[1 for i in range(10)]
-                    header_list[0]=5
-                    header_list[1]=CLIENT_ID
-                    header_list[2]=SERVER_ID
+                    header_list = [1 for i in range(10)]
+                    header_list[0] = 5
+                    header_list[1] = CLIENT_ID
+                    header_list[2] = SERVER_ID
 
-                    datagram_obj=Datagram(payload, header_list)
-                    self.package=datagram_obj.get_datagram()
+                    datagram_obj = Datagram(payload, header_list)
+                    self.package = datagram_obj.get_datagram()
                     self.send_package()
                     self.shutdown()
 
@@ -155,17 +155,17 @@ class Server:
                     print(
                         f'5 segundos sem receber o proximo pacote, enviando resposta novamente...')
                     self.send_package()
-                    self.timer2=time.time()
+                    self.timer2 = time.time()
 
             self.get_header()
             self.get_payload_eop()
             # verify eop and current == last + 1
             # verificar se o pacote atual é igual ao anterior +1
-            self.is_next_package=self.n_last_package_received + 1 == self.n_current_package
-            self.is_eop_right=self.r_eop == b'\xff\xaa\xff\xaa'
+            self.is_next_package = self.n_last_package_received + 1 == self.n_current_package
+            self.is_eop_right = self.r_eop == b'\xff\xaa\xff\xaa'
 
-            print(f'Recebeu o proximo? [{self.is_next_package}]', end = ' | ')
-            print(f'Is eop ok?  [{self.is_eop_right}]', end = " | ")
+            print(f'Recebeu o proximo? [{self.is_next_package}]', end=' | ')
+            print(f'Is eop ok?  [{self.is_eop_right}]', end=" | ")
             print(
                 f'Received package [{self.n_current_package} / {self.quantity_packages_to_receive}]')
 
@@ -176,7 +176,7 @@ class Server:
         self.juntar_imagem()
 
     def juntar_imagem(self):
-        received_img=b''.join(self.l_received_payloads)
+        received_img = b''.join(self.l_received_payloads)
 
         with open('imagem-recebida.png', 'wb') as file:
             file.write(received_img)
@@ -200,5 +200,5 @@ class Server:
 
 
 if __name__ == '__main__':
-    server=Server()
+    server = Server()
     server.main()
