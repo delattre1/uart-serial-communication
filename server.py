@@ -38,7 +38,7 @@ class Server:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_server4.txt', 'a') as fd:
+        with open('logs/log_server5.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def get_header(self):
@@ -148,19 +148,19 @@ class Server:
 
                     datagram_obj = Datagram(payload, header_list)
                     self.package = datagram_obj.get_datagram()
-                    # self.send_package()
-                    # self.shutdown()
+                    self.send_package()
+                    self.shutdown()
 
                 if elapsed_timer2 >= 5:
                     print(
                         f'5 segundos sem receber o proximo pacote, enviando resposta novamente...')
-                    # self.send_package()
+                    self.send_package()
                     self.timer2 = time.time()
 
             self.get_header()
             self.get_payload_eop()
             # verify eop and current == last + 1
-            # verificar se o pacote atual é igual ao anterior +1
+            # verificar se o pacote atual é igual ao anterior + 1
             self.is_next_package = self.n_last_package_received + 1 == self.n_current_package
             self.is_eop_right = self.r_eop == b'\xff\xaa\xff\xaa'
 
@@ -170,7 +170,7 @@ class Server:
                 f'Received package [{self.n_current_package} / {self.quantity_packages_to_receive}]')
 
             self.build_response()
-            # self.send_package()
+            self.send_package()
 
         print(f'Received all packages')
         self.juntar_imagem()
