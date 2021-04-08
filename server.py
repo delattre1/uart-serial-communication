@@ -38,7 +38,7 @@ class Server:
         self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_server1.txt', 'a') as fd:
+        with open('logs/log_server5.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def get_header(self):
@@ -160,7 +160,7 @@ class Server:
             self.get_header()
             self.get_payload_eop()
             # verify eop and current == last + 1
-            # verificar se o pacote atual é igual ao anterior +1
+            # verificar se o pacote atual é igual ao anterior + 1
             self.is_next_package = self.n_last_package_received + 1 == self.n_current_package
             self.is_eop_right = self.r_eop == b'\xff\xaa\xff\xaa'
 

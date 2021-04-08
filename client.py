@@ -20,27 +20,35 @@ class Client:
         self.l_bytes_img = separate_packages(self.img_array)
         self.l_packages = []
         self.str_log = ''
+        self.start_execution_time = 0
 
     def send_package(self):
-        pkg = np.asarray(self.package)
-        self.com1.sendData(pkg)
-
-        send_or_receive = 'send'
-        head_pkg_bin = list(self.package)[:10]
-        head_pkg = [int.from_bytes(byte, 'big') for byte in head_pkg_bin]
-
-        msg_type = head_pkg[0]
-        total_pkgs = head_pkg[3]
-        current_pkg = head_pkg[4]
-
-        if msg_type == 3:
-            str_event = f'{get_current_time()} | {send_or_receive}    | {msg_type} | {len(pkg)} | [{current_pkg}/{total_pkgs}] | \n'
+        delta_time = time.time() - self.start_execution_time
+        if delta_time > 3 and delta_time < 10:  # to simulate and error in the connection
+            print('\n')
+            print(delta_time)
+            print('nao enviei nada pra simular o problema \n')
+            pass
         else:
-            str_event = f'{get_current_time()} | {send_or_receive}    | {msg_type} |\n'
-        self.str_log += str_event
+            pkg = np.asarray(self.package)
+            self.com1.sendData(pkg)
+
+            send_or_receive = 'send'
+            head_pkg_bin = list(self.package)[:10]
+            head_pkg = [int.from_bytes(byte, 'big') for byte in head_pkg_bin]
+
+            msg_type = head_pkg[0]
+            total_pkgs = head_pkg[3]
+            current_pkg = head_pkg[4]
+
+            if msg_type == 3:
+                str_event = f'{get_current_time()} | {send_or_receive}    | {msg_type} | {len(pkg)} | [{current_pkg}/{total_pkgs}] | \n'
+            else:
+                str_event = f'{get_current_time()} | {send_or_receive}    | {msg_type} |\n'
+            self.str_log += str_event
 
     def write_logs(self):
-        with open('logs/log_client1.txt', 'a') as fd:
+        with open('logs/log_client5.txt', 'a') as fd:
             fd.write(self.str_log)
 
     def build_packages(self):
@@ -139,24 +147,17 @@ class Client:
                 print(f'Não teve sucesso no handshake...')
 
     def send_full_packages(self):
+        index = 0
         for index_package in range(self.len_packages):
             self.package = self.l_packages[index_package]
             self.send_package()
             self.timer1 = time.time()
             self.timer2 = self.timer1
             print(f'Enviando o pacote [{index_package + 1}]...')
+            last_sent_pkg = index_package + 1
+            self.verify_server_receivement(last_sent_pkg)
 
-            # if index_package == 10:  # to simulate an error
-            #    self.simulate_error()
-            # else:
-            #    self.send_package()
-            #    self.timer1 = time.time()
-            #    self.timer2 = self.timer1
-            #    print(f'Enviando o pacote [{index_package + 1}]...')
-
-            self.verify_server_receivement()
-
-    def simulate_error(self):
+    def simulate_error(self, index_package):
         pkg_correto = self.package
         self.package = self.l_packages[index_package+2]
         self.send_package()
@@ -173,9 +174,10 @@ class Client:
         datagram_obj = Datagram(payload, self.header_list)
         self.package = datagram_obj.get_datagram()
 
-    def verify_server_receivement(self):
+    def verify_server_receivement(self, last_sent_pkg):
         msg_type = ''
-        while msg_type != 4:
+        last_successful_msg = ''
+        while msg_type != 4 or last_successful_msg != last_sent_pkg:
 
             # loops until notice something in the buffer, then verify
             while self.com1.rx.getBufferLen() == 0:
@@ -197,13 +199,18 @@ class Client:
             self.get_header()
             self.get_payload_eop()
             msg_type = self.package_header[0]
-            print(f'Tipo msg: {msg_type}')
+            last_successful_msg = self.package_header[7]
+            print(
+                f'Tipo msg: {msg_type} | última com sucesso: {last_successful_msg}')
 
             if msg_type == 4:
                 print(f'Server recebeu corretamente o pacote. Enviando o próximo')
 
             elif msg_type == 6:
-                print(f'Server nao recebeu corretamente. Reenviando...')
+                required_pkg = self.package_header[6] - 1
+                print(
+                    f'Server nao recebeu corretamente. Solicitou o {required_pkg}...')
+                self.package = self.l_packages[required_pkg]
                 self.send_package()
                 self.timer2 = time.time()
 
@@ -212,12 +219,12 @@ class Client:
 
         self.client_handshake()
 
-        start_execution_time = time.time()
+        self.start_execution_time = time.time()
 
         self.send_full_packages()
         time.sleep(0.5)
 
-        execution_time = time.time() - start_execution_time
+        execution_time = time.time() - self.start_execution_time
         print(f'Tempo total de execução: {execution_time: .2f}')
         #print(f'Velocidade: {len(COLOCAR_TOTAL_BYTES)/execution_time:.2f} B/s')
         self.shutdown()
